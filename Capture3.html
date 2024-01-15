@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Camera</title>
+</head>
+<body>
+
+<input type="file" accept="image/*,video/*" capture="camera" id="cameraInput">
+<canvas id="mediaCanvas" style="max-width: 100%; border: 1px solid #ccc;"></canvas>
+
+<script>
+  const cameraInput = document.getElementById('cameraInput');
+  const mediaCanvas = document.getElementById('mediaCanvas');
+  const ctx = mediaCanvas.getContext('2d');
+
+  cameraInput.addEventListener('change', handleMedia);
+
+  function handleMedia() {
+    const file = cameraInput.files[0];
+
+    if (file) {
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+        const mediaElement = file.type.startsWith('image/') ? new Image() : document.createElement('video');
+        mediaElement.src = e.target.result;
+
+        mediaElement.onload = function () {
+          // Clear previous content
+          ctx.clearRect(0, 0, mediaCanvas.width, mediaCanvas.height);
+
+          // Draw the media on the canvas
+          mediaCanvas.width = mediaElement.width;
+          mediaCanvas.height = mediaElement.height;
+          ctx.drawImage(mediaElement, 0, 0, mediaElement.width, mediaElement.height);
+        };
+
+        if (file.type.startsWith('video/')) {
+          // For video files, add controls and play
+          mediaElement.controls = true;
+          mediaElement.play();
+        }
+      };
+
+      // Read the file as a data URL
+      reader.readAsDataURL(file);
+    }
+  }
+</script>
+
+</body>
+</html>
