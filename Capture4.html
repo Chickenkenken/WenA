@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Camera</title>
+</head>
+<body>
+
+<video id="cameraFeed" style="max-width: 100%; border: 1px solid #ccc;" autoplay></video>
+<canvas id="mediaCanvas" style="max-width: 100%; border: 1px solid #ccc;"></canvas>
+
+<script>
+  const cameraFeed = document.getElementById('cameraFeed');
+  const mediaCanvas = document.getElementById('mediaCanvas');
+  const ctx = mediaCanvas.getContext('2d');
+
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then((stream) => {
+      cameraFeed.srcObject = stream;
+
+      // Handle the stream for canvas
+      const track = stream.getVideoTracks()[0];
+      const imageCapture = new ImageCapture(track);
+
+      setInterval(() => {
+        imageCapture.grabFrame()
+          .then((imageBitmap) => {
+            mediaCanvas.width = imageBitmap.width;
+            mediaCanvas.height = imageBitmap.height;
+            ctx.drawImage(imageBitmap, 0, 0, imageBitmap.width, imageBitmap.height);
+          })
+          .catch((error) => console.error(error));
+      }, 1000); // Update canvas every second
+    })
+    .catch((error) => console.error(error));
+</script>
+
+</body>
+</html>
