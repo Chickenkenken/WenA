@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Camera</title>
+</head>
+<body>
+
+<input type="file" accept="image/*" capture="camera" id="cameraInput">
+<canvas id="imageCanvas" style="max-width: 100%; border: 1px solid #ccc;"></canvas>
+
+<script>
+  const cameraInput = document.getElementById('cameraInput');
+  const imageCanvas = document.getElementById('imageCanvas');
+  const ctx = imageCanvas.getContext('2d');
+
+  cameraInput.addEventListener('change', handleImage);
+
+  function handleImage() {
+    const file = cameraInput.files[0];
+
+    if (file) {
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+        const img = new Image();
+        img.src = e.target.result;
+
+        img.onload = function () {
+          // Clear previous content
+          ctx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+
+          // Draw the image on the canvas
+          imageCanvas.width = img.width;
+          imageCanvas.height = img.height;
+          ctx.drawImage(img, 0, 0, img.width, img.height);
+        };
+      };
+
+      // Read the file as a data URL
+      reader.readAsDataURL(file);
+    }
+  }
+</script>
+
+</body>
+</html>
