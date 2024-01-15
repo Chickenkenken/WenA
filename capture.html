@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera and Video Recorder</title>
+</head>
+<body>
+
+<!-- Camera and Result Box -->
+<div id="cameraResultBox" style="width: 300px; height: 300px; border: 1px solid #ccc; position: relative; overflow: hidden;">
+    <video id="cameraPreview" style="width: 100%; height: 100%;" autoplay></video>
+    <img id="capturedImage" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none;" alt="Captured Image">
+    <video id="recordedVideo" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none;" controls></video>
+</div>
+
+<!-- Buttons -->
+<button onclick="captureImage()">Capture Image</button>
+<button onclick="startRecording()">Start Recording</button>
+<button onclick="stopRecording()">Stop Recording</button>
+<button onclick="confirmResult()">Confirm</button>
+
+<script>
+    var mediaRecorder;
+    var chunks = [];
+    var capturingImage = false;
+
+    // Get access to the camera
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function (stream) {
+            var videoElement = document.getElementById('cameraPreview');
+            videoElement.srcObject = stream;
+        })
+        .catch(function (error) {
+            console.error('Error accessing the camera: ', error);
+        });
+
+    // Capture Image
+    function captureImage() {
+        // Set capturingImage flag
+        capturingImage = true;
+
+        // Reset the camera result box
+        resetCameraResultBox();
+
+        var video = document.getElementById('cameraPreview');
+        var canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        var capturedImage = document.getElementById('capturedImage');
+        capturedImage.src = canvas.toDataURL('image/png');
+        capturedImage.style.display = 'block';
+    }
+
+    // Start Recording
+    function startRecording() {
+        // Set capturingImage flag to false
+        capturingImage = false;
+
+        // Reset the camera result box
+        resetCameraResultBox();
+
+        var video = document.getElementById('cameraPreview');
+        mediaRecorder = new MediaRecorder(video.srcObject);
+        mediaRecorder.ondataavailable = function (event) {
+            if (event.data.size > 0) {
+                chunks.push(event.data);
+            }
+        };
+        mediaRecorder.onstop = function () {
+            var recordedBlob = new Blob(chunks, { type: 'video/webm' });
+            var recordedVideo = document.getElementById('recordedVideo');
+            recordedVideo.src = URL.createObjectURL(recordedBlob);
+            recordedVideo.controls = true;
+            recordedVideo.style.display = 'block';
+            chunks = [];
+        };
+        mediaRecorder.start();
+    }
+
+    // Stop Recording
+    function stopRecording() {
+        if (mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+        }
+    }
+
+    // Confirm Result
+    function confirmResult() {
+        // Retrieve the confirmed image or video
+        var confirmedData;
+        if (capturingImage) {
+            confirmedData = document.getElementById('capturedImage').src;
+        } else {
+            confirmedData = document.getElementById('recordedVideo').src;
+        }
+
+        // Send the confirmed data to the server for storage
+        saveToDatabase(confirmedData);
+    }
+
+    // Save to Database
+    function saveToDatabase(data) {
+        // This function should make an AJAX request to your server-side script
+        // Here, I'm assuming a hypothetical PHP script named "saveToDatabase.php"
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                // Handle the response from the server if needed
+                console.log(xhr.responseText);
+            }
+        };
+        xhr.open("POST", "saveToDatabase.php", true);
+        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        xhr.send("data=" + encodeURIComponent(data));
+    }
+
+    // Reset Camera Result Box
+    function resetCameraResultBox() {
+        var capturedImage = document.getElementById('capturedImage');
+        var recordedVideo = document.getElementById('recordedVideo');
+
+        capturedImage.style.display = 'none';
+        capturedImage.src = '';
+
+        recordedVideo.style.display = 'none';
+        recordedVideo.src = '';
+    }
+</script>
+
+</body>
+</html>
