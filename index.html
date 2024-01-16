@@ -1,60 +1,55 @@
 <?php
-// Check if the form is submitted
+$host = "localhost";
+$username = "root";
+$password = "";
+$database = "upload";
+
+$conn = new mysqli($host, $username, $password, $database);
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $name = $_POST["name"];
+    if (isset($_FILES["image"]) && $_FILES["image"]["error"] == 0) {
+        // Directory where uploaded files will be saved
+        $uploadDirectory = 'uploads/';
 
-    // Check if a file is selected
-    if (isset($_FILES["pdf"])) {
-        $pdfFile = $_FILES["pdf"];
-
-        // Set the uploads directory
-        $uploadsDirectory = 'uploads/';
-
-        // Check if the directory exists; if not, create it
-        if (!file_exists($uploadsDirectory)) {
-            mkdir($uploadsDirectory, 0755, true);
+        // Check if the directory exists, create it if not
+        if (!is_dir($uploadDirectory)) {
+            mkdir($uploadDirectory, 0777, true);
         }
 
-        // Move the uploaded file to the uploads directory
-        $uploadedFilePath = $uploadsDirectory . basename($pdfFile["name"]);
-        move_uploaded_file($pdfFile["tmp_name"], $uploadedFilePath);
+        // Move the uploaded file to the specified directory
+        $uploadedFilePath = $uploadDirectory . $_FILES["image"]["name"];
+        move_uploaded_file($_FILES["image"]["tmp_name"], $uploadedFilePath);
 
-        // Database connection (replace with your database credentials)
-        $dbHost = "localhost";
-        $dbUser = "root";
-        $dbPass = "";
-        $dbName = "pdf";
+        // Insert record into the database
+        $imageData = file_get_contents($uploadedFilePath);
+        $imageName = $_FILES["image"]["name"];
 
-        $conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName);
+        $stmt = $conn->prepare("INSERT INTO tb_upload (image_name, image) VALUES (?, ?)");
 
-        // Check connection
-        if ($conn->connect_error) {
-            die("Connection failed: " . $conn->connect_error);
-        }
+        if ($stmt) {
+            $stmt->bind_param("sb", $imageName, $imageData);
+            $stmt->execute();
 
-        // Prepare and execute SQL query
-        $query = "INSERT INTO tb_pdf (name, pdf) VALUES (?, ?)";
-        $stmt = $conn->prepare($query);
-        $pdfContent = file_get_contents($uploadedFilePath);
-        $stmt->bind_param("sb", $name, $pdfContent);
+            if ($stmt->affected_rows > 0) {
+                echo "Image uploaded successfully!";
+            } else {
+                echo "Error uploading image: " . $stmt->error;
+            }
 
-        if ($stmt->execute()) {
-            echo "PDF uploaded successfully.";
-
-            // Display the uploaded PDF
-
-            echo "<br><embed src='data:application/pdf;base64," . base64_encode($pdfContent) . "' width='600' height='400' type='application/pdf'>";
+            $stmt->close();
         } else {
-            echo "Error uploading PDF.";
+            echo "Error preparing statement: " . $conn->error;
         }
-
-        // Close database connection
-        $stmt->close();
-        $conn->close();
     } else {
-        echo "Please select a PDF file.";
+        echo "Please select a valid image file.";
     }
 }
+
+$conn->close();
 ?>
 
 <!DOCTYPE html>
@@ -62,19 +57,48 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Upload</title>
+    <title>Image Upload</title>
 </head>
 <body>
-    <h1>Upload PDF</h1>
-    <form method="post" enctype="multipart/form-data">
-        <label for="name">Name:</label>
-        <input type="text" name="name" required>
+    <h2>Upload Image</h2>
+    <form action="" method="post" enctype="multipart/form-data" id="uploadForm">
+        <label for="image">Choose Image:</label>
+        <input type="file" name="image" id="image" accept="image/*" capture="camera" required>
         <br>
-        <label for="pdf">PDF File:</label>
-        <input type="file" name="pdf" accept=".pdf" required>
+        <div id="imagePreview" style="width: 300px; height: 300px; margin-top: 10px; overflow: hidden;"></div>
         <br>
-        <button type="submit">Upload</button>
-        <h1>PDF FILE</h1>
+        <input type="submit" value="Upload">
     </form>
+
+    <script>
+        // JavaScript to enable camera capture and resize the image to fit the div
+        document.getElementById('image').addEventListener('change', function() {
+            var fileInput = this;
+            var file = fileInput.files[0];
+            if (file) {
+                var img = new Image();
+                img.src = URL.createObjectURL(file);
+                img.onload = function() {
+                    URL.revokeObjectURL(this.src);
+                    var aspectRatio = img.width / img.height;
+                    var width = 300;
+                    var height = 300;
+                    if (aspectRatio > 1) {
+                        // Landscape orientation
+                        width = 300;
+                        height = 300 / aspectRatio;
+                    } else {
+                        // Portrait orientation
+                        width = 300 * aspectRatio;
+                        height = 300;
+                    }
+                    img.width = width;
+                    img.height = height;
+                    document.getElementById('imagePreview').innerHTML = '';
+                    document.getElementById('imagePreview').appendChild(img);
+                };
+            }
+        });
+    </script>
 </body>
 </html>
